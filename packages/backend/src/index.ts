@@ -79,7 +79,11 @@ app.post("/upload/*", async (req, res) => {
 });
 
 app.post("/delete/*", async (req, res) => {
-    const sub = req.path.replace("/delete", "").split("/").filter(Boolean).join("/");
+    const sub = decodeURIComponent(req.path)
+        .replace("/delete", "")
+        .split("/")
+        .filter(Boolean)
+        .join("/");
 
     if (fs.existsSync(join(sub))) {
         fs.rmSync(join(sub), { recursive: true });
@@ -92,7 +96,11 @@ app.post("/delete/*", async (req, res) => {
 });
 
 app.post("/mkdir/*", async (req, res) => {
-    const sub = req.path.replace("/mkdir", "").split("/").filter(Boolean).join("/");
+    const sub = decodeURIComponent(req.path)
+        .replace("/mkdir", "")
+        .split("/")
+        .filter(Boolean)
+        .join("/");
 
     if (fs.existsSync(join(sub))) {
         res.json({ ok: false });
@@ -118,6 +126,7 @@ setInterval(() => {
                 text: `Server has been running for ${Math.round(
                     (Date.now() - SERVER_START_TIME) / 1000,
                 )} seconds`,
+                connections: connections.length,
             }),
         );
     });
