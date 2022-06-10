@@ -47,7 +47,11 @@ app.use("/ws", async (req, res) => {
 });
 
 app.post("/upload/*", async (req, res) => {
-    const sub = req.path.replace("/upload", "").split("/").filter(Boolean).join("/");
+    const sub = req.path
+        .replace("/upload", "")
+        .split("/")
+        .filter((x) => x.trim())
+        .join("/");
 
     if (!fs.existsSync(join(sub))) {
         fs.mkdirSync(join(sub), { recursive: true });
@@ -82,7 +86,7 @@ app.post("/delete/*", async (req, res) => {
     const sub = decodeURIComponent(req.path)
         .replace("/delete", "")
         .split("/")
-        .filter(Boolean)
+        .filter((x) => x.trim())
         .join("/");
 
     if (fs.existsSync(join(sub))) {
@@ -99,7 +103,7 @@ app.post("/mkdir/*", async (req, res) => {
     const sub = decodeURIComponent(req.path)
         .replace("/mkdir", "")
         .split("/")
-        .filter(Boolean)
+        .filter((x) => x.trim())
         .join("/");
 
     if (fs.existsSync(join(sub))) {
