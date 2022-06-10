@@ -22,7 +22,7 @@ const tree: Node = reactive({
 const current = ref(window.location.hash.slice(1) || "/");
 const dir = computed(() => {
     document.title = current.value.split("/").filter(Boolean).length
-        ? "/" + current.value.split("/").filter(Boolean).join("/") + "/"
+        ? "/" + current.value.split("/").filter(Boolean).map(decodeURIComponent).join("/") + "/"
         : "/";
     return subtree();
 });
@@ -44,7 +44,10 @@ window.addEventListener("hashchange", () => {
 });
 
 function subtree() {
-    const path = current.value.split("/").filter(Boolean);
+    const path = current.value
+        .split("/")
+        .filter((x) => x.trim())
+        .map(decodeURIComponent);
 
     let node = tree;
     for (const name of path) {
@@ -123,6 +126,16 @@ async function mkdir() {
 }
 
 async function remove(path: string) {
+    if (
+        !confirm(
+            `Are you sure you want to delete "${path
+                .split("/")
+                .filter((x) => x.trim())
+                .slice(-1)}" ?`,
+        )
+    ) {
+        return;
+    }
     const res = await fetch("/delete/" + path, {
         method: "POST",
     });
@@ -155,7 +168,7 @@ async function remove(path: string) {
             <span class="m:8 p:12 f:20">
                 <span @click="go('/')" class="cursor:pointer">/</span>
                 <span
-                    v-for="(name, i) in current.split('/').filter(Boolean)"
+                    v-for="(name, i) in current.split('/').filter(Boolean).map(decodeURIComponent)"
                     :key="name"
                     @click="
                         go(
@@ -210,6 +223,16 @@ async function remove(path: string) {
                     ]"
                 >
                     {{ item.name }}
+                    <span
+                        class="color:red-60 float:right"
+                        @click="
+                            (event) => {
+                                event.stopPropagation();
+                                remove(item.path);
+                            }
+                        "
+                        >Remove</span
+                    >
                 </div>
             </div>
         </transition>
