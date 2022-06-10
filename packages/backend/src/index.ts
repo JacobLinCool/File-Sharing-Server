@@ -66,7 +66,6 @@ app.post("/upload/*", async (req, res) => {
     const form = formidable({ multiples: true });
 
     form.parse(req, (err, fields, files) => {
-        console.log({ sub, files });
         res.json({ sub, files });
 
         for (const file of Object.values(files)) {
