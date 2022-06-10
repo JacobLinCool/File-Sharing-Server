@@ -17,7 +17,9 @@ A Node.js file server with [cloudflared tunnel](https://try.cloudflare.com/).
 
 ## Usage
 
-1. [Fork](https://github.com/JacobLinCool/GitHub-File-Sharing/fork).
+1. [Fork](https://github.com/JacobLinCool/File-Sharing-Server/fork).
 2. Go to [Action](./workflows/file-sharing.yml), click `Run workflow`.
 3. Find something like `https://some-random-words.trycloudflare.com` in the output of `Start Server` step.
 4. Access the url and start sharing!
+
+![find URL](./screenshots/find-url.jpg)
