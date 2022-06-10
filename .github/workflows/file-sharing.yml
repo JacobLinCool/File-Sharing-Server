@@ -26,11 +26,13 @@ jobs:
               run: pnpm build
 
             - name: Install Cloudflared
-              run: brew install cloudflare/cloudflare/cloudflared
+              run: |
+                  sudo apt update
+                  sudo apt -y install cloudflared
 
             - name: Start Server
               env:
                   DIR: ${{inputs.dir}}
               run: |
                   pnpm run start &
-                  cloudflared tunnel --url http://localhost:3000
+                  sudo cloudflared tunnel --url http://localhost:3000
