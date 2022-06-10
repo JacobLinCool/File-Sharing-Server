@@ -6,6 +6,7 @@ import sirv from "sirv";
 import { TinyWSRequest, tinyws } from "tinyws";
 import { WebSocket } from "ws";
 import { App, Request } from "@tinyhttp/app";
+import chokidar from "chokidar";
 
 const SERVER_START_TIME = Date.now();
 
@@ -19,7 +20,7 @@ if (!fs.existsSync(dir)) {
 let tree = get_tree(dir);
 let connections: WebSocket[] = [];
 
-fs.watch(dir, { recursive: true }, () => {
+chokidar.watch(dir, {}).on("all", () => {
     tree = get_tree(dir);
     connections.forEach((ws) => {
         ws.send(pack({ type: "update", data: tree }));
@@ -47,7 +48,7 @@ app.use("/ws", async (req, res) => {
 });
 
 app.post("/upload/*", async (req, res) => {
-    const sub = req.path
+    const sub = decodeURIComponent(req.path)
         .replace("/upload", "")
         .split("/")
         .filter((x) => x.trim())
