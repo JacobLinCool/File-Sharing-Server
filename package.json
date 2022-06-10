@@ -1,0 +1,21 @@
+{
+    "name": "file-sharing",
+    "version": "0.1.0",
+    "description": "",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node dist/backend/index.js",
+        "build": "pnpm -r build",
+        "dev": "pnpm -r dev",
+        "format": "prettier --write '**/*.{js,ts,vue,html,css}' --ignore-path .gitignore"
+    },
+    "keywords": [],
+    "author": "JacobLinCool <jacoblincool@gmail.com> (https://github.com/JacobLinCool)",
+    "license": "MIT",
+    "devDependencies": {
+        "@trivago/prettier-plugin-sort-imports": "^3.2.0",
+        "prettier": "^2.6.2",
+        "prettier-plugin-sort-class-names": "^3.0.1"
+    }
+}
