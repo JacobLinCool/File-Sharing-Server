@@ -2,6 +2,11 @@ name: Temp File Sharing
 
 on:
     workflow_dispatch:
+        inputs:
+            dir:
+                description: The base directory to share
+                required: false
+                default: ".store"
 
 jobs:
     serve:
@@ -11,19 +16,21 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
 
-            - name: Checkout
-              uses: actions/checkout@v3
-
-            - name: Install
-              run: npx -y pnpm i
+            - name: Setup PNPM
+              uses: pnpm/action-setup@v2.2.2
+              with:
+                  version: latest
+                  run_install: true
 
             - name: Build
-              run: npx -y pnpm build
+              run: pnpm build
 
             - name: Install Cloudflared
               run: brew install cloudflare/cloudflare/cloudflared
 
-            - name: start server
+            - name: Start Server
+              env:
+                  DIR: ${{inputs.dir}}
               run: |
-                  npx -y pnpm run start &
+                  pnpm run start &
                   sudo cloudflared tunnel --url http://localhost:3000
