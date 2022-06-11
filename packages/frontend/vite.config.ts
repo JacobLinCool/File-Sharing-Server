@@ -10,11 +10,11 @@ export default defineConfig({
     },
     server: {
         proxy: {
-            "/ws": "http://localhost:3001",
-            "/store": "http://localhost:3001",
-            "/upload/*": "http://localhost:3001",
-            "/delete/*": "http://localhost:3001",
-            "/mkdir/*": "http://localhost:3001",
+            "/ws": "ws://localhost:3001",
+            "/store/": "http://localhost:3001",
+            "/upload/": "http://localhost:3001",
+            "/delete/": "http://localhost:3001",
+            "/mkdir/": "http://localhost:3001",
         },
     },
 });
