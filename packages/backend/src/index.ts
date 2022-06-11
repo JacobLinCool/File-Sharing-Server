@@ -6,6 +6,7 @@ import sirv from "sirv";
 import { App, Request } from "@tinyhttp/app";
 import chokidar from "chokidar";
 import ws, { WebSocketRequest, WebSocket } from "./ws";
+import { empty_hash, setup_from_env } from "./permission";
 
 const SERVER_START_TIME = Date.now();
 
@@ -16,33 +17,58 @@ if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
 }
 
+const pm = setup_from_env();
 let tree = get_tree(dir);
-let connections: WebSocket[] = [];
+let connections: (WebSocket & { hash?: string })[] = [];
 
 chokidar.watch(dir, {}).on("all", () => {
     tree = get_tree(dir);
     connections.forEach((ws) => {
-        ws.send(pack({ type: "update", data: tree }));
+        ws.send(pack({ type: "update", data: pm.filter(ws.hash || empty_hash, tree) }));
     });
 });
 
-    .use("/store", sirv(dir, { dev: true }))
+setInterval(() => {
+    connections.forEach((ws) => {
+        ws.send(
+            pack({
+                type: "ping",
+                connections: connections.length,
+                uptime: Math.round((Date.now() - SERVER_START_TIME) / 1000),
+            }),
+        );
+    });
+}, 30_000);
+
 const app = new App<any, Request & WebSocketRequest>()
     .use(ws())
     .use("/", sirv(path.resolve(__dirname, "..", "frontend")));
 
 app.use("/ws", async (req, res) => {
     if (req.ws) {
-        const ws = await req.ws();
+        const ws: WebSocket & { hash?: string } = await req.ws();
         connections.push(ws);
 
         ws.on("close", () => (connections = connections.filter((conn) => conn !== ws)));
 
         ws.on("message", (message) => {
-            console.log(`Received`, message);
+            console.log(`Received`, message.toString());
+
+            try {
+                const data = JSON.parse(message.toString());
+                if (data.type === "auth") {
+                    ws.hash = data.token;
+                    ws.send(pack({ type: "perm", data: pm.perm(ws.hash || empty_hash) }));
+                    ws.send(pack({ type: "update", data: pm.filter(ws.hash || empty_hash, tree) }));
+                }
+            } catch {
+                console.error(`Invalid message`, message);
+            }
         });
 
-        ws.send(pack({ type: "update", data: tree }));
+        ws.hash = empty_hash;
+
+        ws.send(pack({ type: "update", data: pm.filter(ws.hash || empty_hash, tree) }));
     }
 });
 
@@ -52,6 +78,14 @@ app.post("/upload/*", async (req, res) => {
         .split("/")
         .filter((x) => x.trim())
         .join("/");
+
+    const hash =
+        typeof req.headers["x-auth-token"] === "string" ? req.headers["x-auth-token"] : empty_hash;
+    if (!pm.check(hash, "write", sub)) {
+        res.statusCode = 403;
+        res.end("Forbidden");
+        return;
+    }
 
     if (!fs.existsSync(join(sub))) {
         fs.mkdirSync(join(sub), { recursive: true });
@@ -82,15 +116,23 @@ app.post("/upload/*", async (req, res) => {
 });
 
 app.post("/delete/*", async (req, res) => {
-    const sub = decodeURIComponent(req.path)
+    const item = decodeURIComponent(req.path)
         .replace("/delete", "")
         .split("/")
         .filter((x) => x.trim())
         .join("/");
 
-    if (fs.existsSync(join(sub)) && join(sub) !== dir) {
-        fs.rmSync(join(sub), { recursive: true });
-        console.log("Deleted", join(sub));
+    const hash =
+        typeof req.headers["x-auth-token"] === "string" ? req.headers["x-auth-token"] : empty_hash;
+    if (!pm.check(hash, "delete", item)) {
+        res.statusCode = 403;
+        res.end("Forbidden");
+        return;
+    }
+
+    if (fs.existsSync(join(item)) && join(item) !== dir) {
+        fs.rmSync(join(item), { recursive: true });
+        console.log("Deleted", join(item));
 
         res.json({ ok: true });
     } else {
@@ -99,19 +141,57 @@ app.post("/delete/*", async (req, res) => {
 });
 
 app.post("/mkdir/*", async (req, res) => {
-    const sub = decodeURIComponent(req.path)
+    const item = decodeURIComponent(req.path)
         .replace("/mkdir", "")
         .split("/")
         .filter((x) => x.trim())
         .join("/");
 
-    if (fs.existsSync(join(sub))) {
+    const hash =
+        typeof req.headers["x-auth-token"] === "string" ? req.headers["x-auth-token"] : empty_hash;
+    if (!pm.check(hash, "mkdir", item)) {
+        res.statusCode = 403;
+        res.end("Forbidden");
+        return;
+    }
+
+    if (fs.existsSync(join(item))) {
         res.json({ ok: false });
     } else {
-        fs.mkdirSync(join(sub), { recursive: true });
-        console.log("Created", join(sub));
+        fs.mkdirSync(join(item), { recursive: true });
+        console.log("Created", join(item));
 
         res.json({ ok: true });
+    }
+});
+
+app.get("/store/*", async (req, res) => {
+    const item = decodeURIComponent(req.path)
+        .replace("/store", "")
+        .split("/")
+        .filter((x) => x.trim())
+        .join("/");
+
+    const hash =
+        typeof req.headers["x-auth-token"] === "string"
+            ? req.headers["x-auth-token"]
+            : typeof req.query.token === "string"
+            ? req.query.token
+            : empty_hash;
+    if (!pm.check(hash, "read", item)) {
+        res.statusCode = 403;
+        res.end("Forbidden");
+        return;
+    }
+
+    if (fs.existsSync(join(item))) {
+        if (fs.statSync(join(item)).isFile()) {
+            res.sendFile(join(item));
+        } else {
+            res.redirect(`/#/${item}`);
+        }
+    } else {
+        res.status(404).send("Not found");
     }
 });
 
@@ -120,20 +200,6 @@ app.listen(port, async () => {
     console.log(`Listening on port ${port}`);
     console.log(`Serving files from ${dir}`);
 });
-
-setInterval(() => {
-    connections.forEach((ws) => {
-        ws.send(
-            pack({
-                type: "ping",
-                text: `Server has been running for ${Math.round(
-                    (Date.now() - SERVER_START_TIME) / 1000,
-                )} seconds`,
-                connections: connections.length,
-            }),
-        );
-    });
-}, 30_000);
 
 function pack(data: unknown) {
     return JSON.stringify(data);

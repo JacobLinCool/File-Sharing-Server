@@ -27,9 +27,11 @@ const dir = computed(() => {
     return subtree();
 });
 
+const token = localStorage.getItem("token") || "";
 const ws = new WebSocket(
     `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`,
 );
+
 ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
     console.log(data);
@@ -38,6 +40,15 @@ ws.onmessage = (event) => {
         Object.assign(tree, data.data);
     }
 };
+
+ws.onopen = async () => {
+    ws.send(JSON.stringify({ type: "auth", token: await sha256(token) }));
+};
+
+window.addEventListener("load", () => {
+    // @ts-ignore
+    window.ws = ws;
+});
 
 window.addEventListener("hashchange", () => {
     current.value = window.location.hash.slice(1);
@@ -68,10 +79,10 @@ function go(name: string) {
     window.location.hash = name;
 }
 
-function download(path: string) {
+async function download(path: string) {
     const win = window.open("", "_blank");
     if (win?.location) {
-        win.location.href = `/store${path}`;
+        win.location.href = `/store${path}?token=${await sha256(token)}`;
     }
 }
 
@@ -94,6 +105,7 @@ async function upload() {
         }
         const res = await fetch("/upload/" + current.value.split("/").filter(Boolean).join("/"), {
             method: "POST",
+            headers: { "X-AUTH-TOKEN": await sha256(token) },
             body: form,
         });
 
@@ -113,6 +125,7 @@ async function mkdir() {
             "/mkdir/" + current.value.split("/").filter(Boolean).join("/") + "/" + name,
             {
                 method: "POST",
+                headers: { "X-AUTH-TOKEN": await sha256(token) },
             },
         );
 
@@ -138,6 +151,7 @@ async function remove(path: string) {
     }
     const res = await fetch("/delete/" + path, {
         method: "POST",
+        headers: { "X-AUTH-TOKEN": await sha256(token) },
     });
 
     if (res.ok) {
@@ -146,6 +160,23 @@ async function remove(path: string) {
     } else {
         console.error(await res.text());
     }
+}
+
+function auth() {
+    const token = prompt("Enter the password (token):");
+    if (token) {
+        localStorage.setItem("token", token);
+    } else {
+        localStorage.removeItem("token");
+    }
+    window.location.reload();
+}
+
+async function sha256(data: string) {
+    const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data));
+    return Array.from(new Uint8Array(buffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 }
 </script>
 
@@ -164,8 +195,14 @@ async function remove(path: string) {
             >
                 New Folder
             </button>
+            <button
+                @click="auth"
+                class="m:8 p:12 f:20 color:orange-60 b:1|solid|orange-60 r:8 transition:all|200ms bg:orange-60:hover color:white:hover"
+            >
+                Auth
+            </button>
 
-            <span class="m:8 p:12 f:20">
+            <span class="m:8 p:12 f:16 f:mono">
                 <span @click="go('/')" class="cursor:pointer">/</span>
                 <span
                     v-for="(name, i) in current.split('/').filter(Boolean).map(decodeURIComponent)"
