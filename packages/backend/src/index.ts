@@ -3,10 +3,9 @@ import path from "node:path";
 import dir_tree, { DirectoryTree } from "directory-tree";
 import formidable from "formidable";
 import sirv from "sirv";
-import { TinyWSRequest, tinyws } from "tinyws";
-import { WebSocket } from "ws";
 import { App, Request } from "@tinyhttp/app";
 import chokidar from "chokidar";
+import ws, { WebSocketRequest, WebSocket } from "./ws";
 
 const SERVER_START_TIME = Date.now();
 
@@ -27,9 +26,9 @@ chokidar.watch(dir, {}).on("all", () => {
     });
 });
 
-const app = new App<any, Request & TinyWSRequest>()
-    .use(tinyws())
     .use("/store", sirv(dir, { dev: true }))
+const app = new App<any, Request & WebSocketRequest>()
+    .use(ws())
     .use("/", sirv(path.resolve(__dirname, "..", "frontend")));
 
 app.use("/ws", async (req, res) => {
