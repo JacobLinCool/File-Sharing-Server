@@ -23,3 +23,9 @@ A Node.js file server with [cloudflared tunnel](https://try.cloudflare.com/).
 4. Access the url and start sharing!
 
 ![find URL](./screenshots/find-url.jpg)
+
+### Authenticated Tunnel
+
+You can set `TUNNEL_TOKEN` in GitHub Secrets, and it will automatically use the authenticated tunnel in the next run.
+
+![set token](./screenshots/set-token.jpg)
