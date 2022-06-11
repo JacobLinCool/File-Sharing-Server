@@ -7,11 +7,15 @@ on:
                 description: The base directory to share
                 required: false
                 default: ".store"
+            duration:
+                description: The duration of the service to run. Number with optional suffix, 's' (default), 'm', 'h'.
+                required: true
+                default: "120m"
 
 jobs:
     serve:
         runs-on: ubuntu-latest
-        timeout-minutes: 120
+        timeout-minutes: 1440 # maximum duration is 24 hours
         steps:
             - name: Checkout
               uses: actions/checkout@v3
@@ -30,21 +34,25 @@ jobs:
                   curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
                   sudo dpkg -i cloudflared.deb
 
-            - name: Start Server (Anonymous)
+            - name: Start Tunnel (Anonymous)
               env:
-                  DIR: ${{ inputs.dir }}
                   TOKEN: ${{ secrets.TUNNEL_TOKEN }}
               if: ${{ env.TOKEN == '' }}
               run: |
-                  sudo cloudflared tunnel --url http://localhost:3000 &
-                  pnpm run start
+                  sudo cloudflared tunnel --url http://localhost:3000 & sleep 5
 
-            - name: Start Server (Authenticated)
+            - name: Start Tunnel (Authenticated)
               env:
-                  DIR: ${{ inputs.dir }}
                   TOKEN: ${{ secrets.TUNNEL_TOKEN }}
-                  PERMISSIONS: ${{ secrets.PERMISSIONS }}
               if: ${{ env.TOKEN != '' }}
               run: |
                   sudo cloudflared service install ${{ secrets.TUNNEL_TOKEN }} &
-                  pnpm run start
+
+            - name: Start Server
+              env:
+                  DIR: ${{ inputs.dir }}
+                  PERMISSIONS: ${{ secrets.PERMISSIONS }}
+              run: |
+                  date 
+                  timeout ${{ github.event.inputs.duration }} pnpm run start || true
+                  date
