@@ -32,9 +32,18 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install cloudflared
 
-            - name: Start Server
+            - name: Start Server (Anonymous)
+              if: "${{ secrets.token == '' }}"
               env:
-                  DIR: ${{inputs.dir}}
+                  DIR: ${{ inputs.dir }}
               run: |
                   pnpm run start &
                   sudo cloudflared tunnel --url http://localhost:3000
+
+            - name: Start Server (Authenticated)
+              if: "${{ secrets.token != '' }}"
+              env:
+                  DIR: ${{ inputs.dir }}
+              run: |
+                  pnpm run start &
+                  sudo cloudflared service install ${{ secrets.token }}
