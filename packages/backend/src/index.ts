@@ -89,7 +89,7 @@ app.post("/delete/*", async (req, res) => {
         .filter((x) => x.trim())
         .join("/");
 
-    if (fs.existsSync(join(sub))) {
+    if (fs.existsSync(join(sub)) && join(sub) !== dir) {
         fs.rmSync(join(sub), { recursive: true });
         console.log("Deleted", join(sub));
 
