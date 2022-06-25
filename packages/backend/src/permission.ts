@@ -25,13 +25,7 @@ export class PermissionManager {
         this.permissions = {};
         for (const [key, value] of Object.entries(config)) {
             const hash = createHash("sha256").update(key).digest("hex");
-            this.permissions[hash] = {
-                read: [],
-                write: [],
-                delete: [],
-                mkdir: [],
-                ...value,
-            };
+            this.permissions[hash] = normalize_permission(value);
         }
 
         this.master = master;
@@ -104,4 +98,50 @@ export function setup_from_env() {
     } else {
         return new PermissionManager();
     }
+}
+
+function normalize_permission(perm: Partial<Permission>): Permission {
+    const read_set = new Set(
+        (perm.read || [])
+            .map((p) => {
+                const slices = p.split("/");
+                return slices.map((s, i) => slices.slice(0, i + 1).join("/"));
+            })
+            .flat()
+            .filter(Boolean),
+    );
+    const write_set = new Set(
+        (perm.write || [])
+            .map((p) => {
+                const slices = p.split("/");
+                return slices.map((s, i) => slices.slice(0, i + 1).join("/"));
+            })
+            .flat()
+            .filter(Boolean),
+    );
+    const delete_set = new Set(
+        (perm.delete || [])
+            .map((p) => {
+                const slices = p.split("/");
+                return slices.map((s, i) => slices.slice(0, i + 1).join("/"));
+            })
+            .flat()
+            .filter(Boolean),
+    );
+    const mkdir_set = new Set(
+        (perm.mkdir || [])
+            .map((p) => {
+                const slices = p.split("/");
+                return slices.map((s, i) => slices.slice(0, i + 1).join("/"));
+            })
+            .flat()
+            .filter(Boolean),
+    );
+
+    return {
+        read: Array.from(read_set),
+        write: Array.from(write_set),
+        delete: Array.from(delete_set),
+        mkdir: Array.from(mkdir_set),
+    };
 }
