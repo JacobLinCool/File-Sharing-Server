@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { DirectoryTree } from "directory-tree";
-import { isMatch } from "matcher";
+import matcher from "matcher";
 import { copy } from "./utils";
 
 export interface Permission {
@@ -40,13 +40,13 @@ export class PermissionManager {
 
         switch (action) {
             case "read":
-                return isMatch(path, permission.read);
+                return matcher(path, permission.read).length > 0;
             case "write":
-                return isMatch(path, permission.write);
+                return matcher(path, permission.write).length > 0;
             case "delete":
-                return isMatch(path, permission.delete);
+                return matcher(path, permission.delete).length > 0;
             case "mkdir":
-                return isMatch(path, permission.mkdir);
+                return matcher(path, permission.mkdir).length > 0;
         }
     }
 
